@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import QuestionCard from '../components/QuestionCard';
 import Timer from '../components/Timer';
@@ -8,22 +8,21 @@ import AudienceChart from '../components/AudienceChart';
 import { TIME_PER_QUESTION, LETTERS } from '../data';
 import { calcPrize, generateAudienceVotes } from '../utils';
 
-const Play = ({ questions, playerName, onGameEnd }) => {
+const Play = ({ playerName, questions, onAddHistory }) => {
   const navigate = useNavigate();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(TIME_PER_QUESTION);
-  const [selectedOption, setSelectedOption] = useState(null);
-  // status: "answering" | "locked" | "revealed"
-  const [status, setStatus] = useState('answering');
-  
-  const [hiddenIndices, setHiddenIndices] = useState([]);
+  const [status, setStatus] = useState('answering'); // 'answering' | 'locked' | 'revealed'
+  const [selectedAnswer, setSelectedAnswer] = useState(null);
+
+  const [usedLifelines, setUsedLifelines] = useState({ '5050': false, audience: false });
+  const [hiddenAnswers, setHiddenAnswers] = useState([]);
   const [audienceVotes, setAudienceVotes] = useState(null);
-  const [usedLifelines, setUsedLifelines] = useState({ fiftyFifty: false, audience: false });
 
   const currentQuestion = questions[currentIndex];
 
-  // Đổi tiêu đề tab trình duyệt khi chơi
+  
   useEffect(() => {
     document.title = `Câu ${currentIndex + 1}/15 – ${playerName}`;
     return () => {
@@ -31,7 +30,33 @@ const Play = ({ questions, playerName, onGameEnd }) => {
     };
   }, [currentIndex, playerName]);
 
-  // Quản lý đếm ngược 30s[cite: 5, 7]
+
+  const finishGame = useCallback((correctCount, reason) => {
+    const prize = calcPrize(correctCount, reason);
+    const record = {
+      id: Date.now(),
+      name: playerName,
+      prize,
+      correctCount,
+      playedAt: new Date().toLocaleString('vi-VN')
+    };
+
+    onAddHistory(record);
+    navigate('/result', {
+      replace: true,
+      state: { name: playerName, prize, correctCount, reason }
+    });
+  }, [playerName, onAddHistory, navigate]);
+
+  
+  const handleSelectAnswer = useCallback((index) => {
+    if (status !== 'answering' || hiddenAnswers.includes(index)) return;
+
+    setSelectedAnswer(index);
+    setStatus('locked');
+  }, [status, hiddenAnswers]);
+
+  
   useEffect(() => {
     if (status !== 'answering') return;
 
@@ -39,7 +64,7 @@ const Play = ({ questions, playerName, onGameEnd }) => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timerId);
-          handleTimeOut();
+          finishGame(currentIndex, 'timeout');
           return 0;
         }
         return prev - 1;
@@ -47,136 +72,112 @@ const Play = ({ questions, playerName, onGameEnd }) => {
     }, 1000);
 
     return () => clearInterval(timerId);
-  }, [status, currentIndex]);
+  }, [status, currentIndex, finishGame]);
 
-  // Quản lý tiến trình sau khi chốt đáp án[cite: 5, 7]
+  
   useEffect(() => {
     let timeoutId;
+
     if (status === 'locked') {
+    
       timeoutId = setTimeout(() => {
         setStatus('revealed');
       }, 1000);
     } else if (status === 'revealed') {
       timeoutId = setTimeout(() => {
-        if (selectedOption === currentQuestion.answer) {
-          // Đúng: chuyển câu tiếp theo hoặc thắng cuộc
-          if (currentIndex + 1 < questions.length) {
+        if (selectedAnswer === currentQuestion.answer) {
+          if (currentIndex + 1 === 15) {
+            finishGame(15, 'win'); // Thắng câu 15[cite: 13]
+          } else {
+          
             setCurrentIndex((prev) => prev + 1);
             setTimeLeft(TIME_PER_QUESTION);
-            setSelectedOption(null);
-            setHiddenIndices([]);
-            setAudienceVotes(null);
             setStatus('answering');
-          } else {
-            // Thắng 15 câu
-            endGame(15, 'win');
+            setSelectedAnswer(null);
+            setHiddenAnswers([]);
+            setAudienceVotes(null);
           }
         } else {
-          // Sai
-          endGame(currentIndex, 'wrong');
+          finishGame(currentIndex, 'wrong'); // Trả lời sai[cite: 13, 14]
         }
       }, 2000);
     }
 
     return () => clearTimeout(timeoutId);
-  }, [status, selectedOption, currentIndex, questions, currentQuestion]);
+  }, [status, selectedAnswer, currentIndex, currentQuestion, finishGame]);
 
-  // Phím tắt A, B, C, D[cite: 6, 7]
+  // Bắt phím tắt A, B, C, D[cite: 15]
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (status !== 'answering') return;
       const key = e.key.toUpperCase();
       const index = LETTERS.indexOf(key);
-
-      if (index !== -1 && !hiddenIndices.includes(index)) {
+      if (index !== -1 && !hiddenAnswers.includes(index)) {
         handleSelectAnswer(index);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [status, hiddenIndices]);
+  }, [status, hiddenAnswers, handleSelectAnswer]);
 
-  if (!playerName) {
-    return <Navigate to="/" replace />;
-  }
-
-  if (!questions || questions.length === 0) {
-    return <div>Đang tải dữ liệu câu hỏi...</div>;
-  }
-
-  const handleSelectAnswer = (index) => {
-    if (status !== 'answering') return;
-    setSelectedOption(index);
-    setStatus('locked');
-  };
-
-  const handleTimeOut = () => {
-    setStatus('revealed');
-    setTimeout(() => {
-      endGame(currentIndex, 'timeout');
-    }, 2000);
-  };
-
-  const endGame = (correctCount, reason) => {
-    const prize = calcPrize(correctCount, reason);
-    onGameEnd({ name: playerName, prize, correctCount });
-    navigate('/result', {
-      replace: true,
-      state: { playerName, prize, correctCount, reason }
-    });
-  };
-
-  // Trợ giúp 50:50[cite: 6]
+  // Dùng quyền 50:50[cite: 15]
   const handleUse5050 = () => {
-    if (usedLifelines.fiftyFifty || status !== 'answering') return;
+    if (usedLifelines['5050'] || status !== 'answering') return;
 
     const wrongIndices = [0, 1, 2, 3].filter((i) => i !== currentQuestion.answer);
-    // Chọn ngẫu nhiên 2 đáp án sai để ẩn
-    const shuffled = wrongIndices.sort(() => 0.5 - Math.random());
-    setHiddenIndices([shuffled[0], shuffled[1]]);
-    setUsedLifelines((prev) => ({ ...prev, fiftyFifty: true }));
+    // Shuffle mảng đáp án sai và lấy 2[cite: 15]
+    const shuffled = [...wrongIndices].sort(() => 0.5 - Math.random());
+    setHiddenAnswers(shuffled.slice(0, 2));
+    setUsedLifelines((prev) => ({ ...prev, '5050': true }));
   };
 
-  // Trợ giúp Hỏi khán giả[cite: 6]
-  const handleAskAudience = () => {
+  // Dùng quyền Hỏi khán giả[cite: 15]
+  const handleUseAudience = () => {
     if (usedLifelines.audience || status !== 'answering') return;
 
-    const votes = generateAudienceVotes(currentQuestion.answer, hiddenIndices);
+    const votes = generateAudienceVotes(currentQuestion.answer, hiddenAnswers);
     setAudienceVotes(votes);
     setUsedLifelines((prev) => ({ ...prev, audience: true }));
   };
 
-  // Dừng cuộc chơi[cite: 6]
+  // Dừng cuộc chơi[cite: 13, 15]
   const handleStopGame = () => {
     if (status !== 'answering') return;
-    endGame(currentIndex, 'stop');
+    finishGame(currentIndex, 'stop');
   };
 
-  return (
-    <div style={{ display: 'flex', gap: '20px' }}>
-      <div style={{ flex: 1 }}>
-        <Lifelines
-          usedLifelines={usedLifelines}
-          onUse5050={handleUse5050}
-          onAskAudience={handleAskAudience}
-          onStopGame={handleStopGame}
-          disabled={status !== 'answering'}
-        />
+  // Chặn truy cập thẳng /play khi chưa có tên[cite: 13]
+  if (!playerName) {
+    return <Navigate to="/" replace />;
+  }
 
-        <Timer timeLeft={timeLeft} />
+  if (!currentQuestion) return <div>Đang tải câu hỏi...</div>;
+
+  return (
+    <div className="play-page">
+      <div className="play-main">
+        <div className="top-bar">
+          <Timer timeLeft={timeLeft} />
+          <Lifelines
+            usedLifelines={usedLifelines}
+            status={status}
+            onUse5050={handleUse5050}
+            onUseAudience={handleUseAudience}
+            onStopGame={handleStopGame}
+          />
+        </div>
+
+        <AudienceChart votes={audienceVotes} />
 
         <QuestionCard
-          question={currentQuestion}
-          index={currentIndex}
-          total={questions.length}
-          hiddenIndices={hiddenIndices}
-          selectedOption={selectedOption}
+          questionIndex={currentIndex}
+          questionData={currentQuestion}
           status={status}
+          selectedAnswer={selectedAnswer}
+          hiddenAnswers={hiddenAnswers}
           onSelectAnswer={handleSelectAnswer}
         />
-
-        {audienceVotes && <AudienceChart votes={audienceVotes} />}
       </div>
 
       <MoneyLadder currentQuestionIndex={currentIndex} />

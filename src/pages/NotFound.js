@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 const NotFound = () => {
   return (
-    <div style={{ textAlign: 'center', padding: '40px 0' }}>
+    <div className="not-found-page">
       <h2>404 - Không tìm thấy trang</h2>
       <Link to="/">Về trang chủ</Link>
     </div>

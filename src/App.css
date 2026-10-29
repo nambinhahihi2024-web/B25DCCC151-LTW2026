@@ -1,38 +1,166 @@
-.App {
-  text-align: center;
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f6f8;
+  color: #333;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
+.layout-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+  background: #fff;
   min-height: 100vh;
+}
+
+.navbar {
+  margin-top: 10px;
+  padding-bottom: 10px;
+}
+
+/* Play layout */
+.play-page {
   display: flex;
-  flex-direction: column;
+  gap: 20px;
+}
+
+.play-main {
+  flex: 1;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  margin-bottom: 20px;
 }
 
-.App-link {
-  color: #61dafb;
+.timer {
+  font-size: 20px;
+  font-weight: bold;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.timer.warning {
+  color: red; /* Đỏ khi <= 10s */
+}
+
+/* Question & Answer buttons */
+.answers-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.answer-btn {
+  padding: 15px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  background-color: #f8f9fa;
+  cursor: pointer;
+  border-radius: 5px;
+  text-align: left;
+}
+
+.answer-btn:disabled {
+  cursor: not-allowed;
+}
+
+.answer-btn.hidden {
+  visibility: hidden;
+}
+
+.answer-btn.locked {
+  background-color: #ffa500; /* Màu cam khi chốt */
+  color: #fff;
+}
+
+.answer-btn.correct {
+  background-color: #28a745; /* Màu xanh lá khi đúng */
+  color: #fff;
+}
+
+.answer-btn.wrong {
+  background-color: #dc3545; /* Màu đỏ khi sai */
+  color: #fff;
+}
+
+/* Money ladder */
+.money-ladder {
+  width: 250px;
+  background: #f1f3f5;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.money-ladder ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.money-ladder li {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.money-ladder li.active {
+  background-color: #ffe066;
+  font-weight: bold;
+}
+
+.money-ladder li.milestone {
+  font-weight: bold;
+}
+
+/* Question bank & Detail */
+.questions-table, .history-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+.questions-table th, .questions-table td,
+.history-table th, .history-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.detail-answer-item {
+  padding: 10px;
+  margin: 5px 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.detail-answer-item.correct {
+  background-color: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
+}
+
+/* Audience Chart */
+.audience-chart {
+  background: #e9ecef;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+}
+
+.bar-container {
+  background: #fff;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 2px;
+  margin-bottom: 8px;
+}
+
+.bar-fill {
+  background: #007bff;
+  height: 100%;
 }

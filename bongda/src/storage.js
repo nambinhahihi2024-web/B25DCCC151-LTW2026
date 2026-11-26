@@ -1,26 +1,20 @@
-import { configureStore } from '@reduxjs/toolkit';
-import goalReducer from './features/goalSlice';
-import matchesReducer from './features/matchesSlice';
-import { loadSaved, saveMatches } from './storage';
+const STORAGE_KEY = 'ltw_bongda_matches';
 
-const savedMatches = loadSaved();
-export const hasSaved = savedMatches !== null;
-
-export const store = configureStore({
-  reducer: {
-    matches: matchesReducer,
-    goal: goalReducer,
-  },
-  preloadedState: {
-    matches: savedMatches ?? [],
-  },
-});
-
-let prevMatches = store.getState().matches;
-store.subscribe(() => {
-  const currentMatches = store.getState().matches;
-  if (currentMatches !== prevMatches) {
-    prevMatches = currentMatches;
-    saveMatches(currentMatches);
+export const loadSaved = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw === null) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
   }
-});
+};
+
+export const saveMatches = (matches) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(matches));
+  } catch {
+    // Bỏ qua lỗi ghi localStorage
+  }
+};

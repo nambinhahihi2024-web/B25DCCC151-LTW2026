@@ -69,7 +69,6 @@ export const calcStandings = (matches) => {
     diff: row.gf - row.ga,
   }));
 
-  // Sắp xếp trên bản sao mới: Điểm ↓, Hiệu số ↓, Bàn thắng ↓, Tên A–Z (vi)
   return [...rows].sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points;
     if (b.diff !== a.diff) return b.diff - a.diff;
@@ -92,4 +91,33 @@ export const calcMatchStats = (matches) => {
   const average = count === 0 ? 0 : Math.round((goals / count) * 100) / 100;
 
   return { count, goals, average, counts };
+};
+
+export const calcNeeded = (standings, teamId, target, remaining) => {
+  const team = standings.find((row) => row.id === Number(teamId));
+  const targetStr = String(target).trim();
+  const remainingStr = String(remaining).trim();
+  const targetNum = targetStr === '' ? NaN : Number(targetStr);
+  const remainingNum = remainingStr === '' ? NaN : Number(remainingStr);
+
+  if (
+    !team ||
+    !Number.isInteger(targetNum) ||
+    targetNum < 0 ||
+    !Number.isInteger(remainingNum) ||
+    remainingNum < 1
+  ) {
+    return 'Hãy chọn đội, nhập số điểm mục tiêu (từ 0) và số trận còn lại (từ 1)';
+  }
+
+  const need = targetNum - team.points;
+  if (need <= 0) {
+    return 'Đội đã đạt mục tiêu';
+  }
+  if (need > 3 * remainingNum) {
+    return 'Không thể đạt mục tiêu này';
+  }
+
+  const minWins = Math.max(0, Math.ceil((need - remainingNum) / 2));
+  return `Cần thêm ${need} điểm ở ${remainingNum} trận còn lại, tối thiểu ${minWins} trận thắng`;
 };
